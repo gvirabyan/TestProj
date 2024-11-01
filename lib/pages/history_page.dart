@@ -16,7 +16,7 @@ class HistoryPage extends StatelessWidget {
 
   Future<List<HistoryItem>> _getAllOrders() async {
     await _getToken();
-    if (_token == null) {
+    if (_token.isEmpty) {
       print('Token is null. Cannot get orders.');
       return [];
     }
@@ -31,41 +31,31 @@ class HistoryPage extends StatelessWidget {
           "Authorization": "Bearer $_token",
         },
       );
-      print(response.body);
 
-      Map<String, dynamic> decodedResponse = json.decode(response as String);
-      String jsonData = decodedResponse['request_time'];
-      String time = decodedResponse['data'][0]['id'];
-      print(time+"-*---------");
+      print('Response Status Code: ${response.statusCode}');
 
-      print("---------------"+jsonData+"----------------");
       if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        List<dynamic> data = jsonResponse['data'];
+
+        List<HistoryItem> historyItems = data.map<HistoryItem>((item) {
+          return HistoryItem(
+            orderStatus: item['order_status'],
+            amount: item['amount'],
+            requestTime: item['request_time'],
+            operationTime: item['operation_time'] ?? '',
+          );
+        }).toList();
+
+        return historyItems;
       } else {
         print('Orders get fail: ${response.body}');
+        return [];
       }
     } catch (error) {
       print('Error occurred: $error');
-    } finally {}
-
-    return [
-      HistoryItem(
-        startDate: '2024-10-01',
-        endDate: '2024-10-05',
-        price: 99.99,
-        status: 'Completed',
-      )
-    ];
-  }
-
-  Future<List<HistoryItem>> _loadHistoryItems() async {
-    return [
-      HistoryItem(
-        startDate: '2024-10-01',
-        endDate: '2024-10-05',
-        price: 99.99,
-        status: 'Completed',
-      )
-    ];
+      return [];
+    }
   }
 
   @override
@@ -84,15 +74,15 @@ class HistoryPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = historyItems[index];
               return Card(
-                margin: EdgeInsets.all(8.0),
+                margin: const EdgeInsets.all(8.0),
                 child: ListTile(
-                  title: Text('Start Date: ${item.startDate}'),
+                  title: Text('Start Date: ${item.requestTime}'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('End Date: ${item.endDate}'),
-                      Text('Price: \$${item.price.toStringAsFixed(2)}'),
-                      Text('Status: ${item.status}'),
+                      Text('End Date: ${item.operationTime}'),
+                      Text('Price: \$${item.amount}'),
+                      Text('Status: ${item.orderStatus}'),
                     ],
                   ),
                 ),

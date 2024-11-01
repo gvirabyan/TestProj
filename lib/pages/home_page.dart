@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:untitled3/pages/settings_page.dart';
 import 'history_page.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -37,7 +36,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _getToken();
     _loadOrderDetails();
-  //  _inProgress();
   }
 
   void _onItemTapped(int index) async {
@@ -125,10 +123,8 @@ print(accessToken+"access token----");
         },
       );
       print(response.statusCode);
-      print(_token);
       if (response.statusCode == 201) {
         _orderDetails = "15:30";
-        print(response.body);
       } else {
         print('Order creation failed: ${response.body}');
       }

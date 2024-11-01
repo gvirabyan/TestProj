@@ -1,13 +1,27 @@
 class HistoryItem {
-  final String startDate;
-  final String endDate;
-  final double price;
-  final String status;
+  final String orderStatus;
+  final String? amount;
+  final String requestTime;
+  final String? operationTime;
 
   HistoryItem({
-    required this.startDate,
-    required this.endDate,
-    required this.price,
-    required this.status,
+    required this.orderStatus,
+    this.amount,
+    required this.requestTime,
+    this.operationTime,
   });
+
+  factory HistoryItem.fromJson(Map<String, dynamic> json) {
+    return HistoryItem(
+      orderStatus: json['order_status'],
+      amount: json['amount'],
+      requestTime: json['request_time'],
+      operationTime: json['operation_time'],
+    );
+  }
+
+  @override
+  String toString() {
+    return 'HistoryItem{orderStatus: $orderStatus, amount: $amount, requestTime: $requestTime, operationTime: $operationTime}';
+  }
 }

@@ -48,18 +48,17 @@ class _LoginPageState extends State<LoginPage> {
           "Accept": "application/json",
           "Content-Type": "application/json"
         },
-        body: jsonEncode(requestBody), // Convert to JSON string
+        body: jsonEncode(requestBody),
       );
 
       print('Status Code: ${response.statusCode}');
       print('Response Body: ${response.body}');
       var decodeJson = jsonDecode(response.body);
 
-      // Check if access_token exists in the response
       if (decodeJson.containsKey('access_token')) {
         String accessToken = decodeJson['access_token'];
         await _saveToken(accessToken);
-        print(accessToken + "-------LOGIN----------"); // Save token
+        print(accessToken + "-------LOGIN----------");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomePage()),
