@@ -21,20 +21,19 @@ class MyApp extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Check if token exists and navigate accordingly
+
           if (snapshot.hasData && snapshot.data == true) {
-            return HomePage(); // If token exists, go to HomePage
+            return HomePage();
           } else {
-            return const LoginPage(); // If token does not exist, go to LoginPage
+            return const LoginPage();
           }
         },
       ),
     );
   }
 
-  // Method to check if token exists in Shared Preferences
   Future<bool> _checkToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token') != null; // Return true if token exists
+    return prefs.getString('token') != null;
   }
 }

@@ -78,15 +78,12 @@ class _HomePageState extends State<HomePage> {
           "Authorization": "Bearer $_token",
         },
       );
-      var decodeJson = jsonDecode(response.body);
-      String accessToken = decodeJson['request_time'];
-print(accessToken+"access token----");
+
       print(response.statusCode);
       if (response.statusCode == 200) {
-        print(response.body);
         _orderDetails = "16:30";
       } else {
-        print('Faild get data: ${response.body}');
+        print('Current order not exists: ${response.body}');
       }
     } catch (error) {
       print('Error occurred: $error');
