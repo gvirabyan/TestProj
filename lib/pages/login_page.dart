@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'home_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -12,6 +13,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+
   SharedPreferences? prefs;
 
   final TextEditingController _loginController = TextEditingController();
@@ -29,7 +32,20 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _sendLoginData(String email, String password) async {
-    final url = Uri.parse('http://192.168.27.48:7000/login');
+
+    if (_formKey.currentState?.validate() ?? false) {
+
+      print('Login successful');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login successful')));
+    } else {
+      print('Login failed');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed')));
+    }
+
+    if(email=='' || password == ''){
+      return;
+    }
+    final url = Uri.parse('http://192.168.27.48:8000/login');
 
     final Map<String, dynamic> requestBody = {
       'email': email,
@@ -76,14 +92,14 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _saveToken(String token) async {
-    await prefs?.setString('token', token); // Use the initialized prefs
+    await prefs?.setString('token', token);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.yellow, Colors.orange],
             begin: Alignment.topLeft,
@@ -92,42 +108,56 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
+          child: Form(
+            key: _formKey,
+            child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextField(
+              TextFormField(
                 controller: _loginController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Email',
                   hintText: 'Enter your email',
                   border: OutlineInputBorder(),
                 ),
+                validator:  (value) {
+                      if (value == ''  ) {
+                      return 'Please enter an email';
+                      }
+                      return null;
+                      },
               ),
-              SizedBox(height: 16),
-              TextField(
+              const SizedBox(height: 16),
+              TextFormField(
                 controller: _passwordController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Password',
                   hintText: 'Enter your password',
                   border: OutlineInputBorder(),
                 ),
+                validator:  (value) {
+                  if (value == ''  ) {
+                    return 'Please enter an password';
+                  }
+                  return null;
+                },
                 obscureText: true,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _isLoading
                     ? null
                     : () {
-                        // Disable button while loading
                         String email = _loginController.text;
                         String password = _passwordController.text;
                         _sendLoginData(email, password);
                       },
-                child: Text('Login'),
+                child: const Text('Login'),
               ),
-              SizedBox(height: 16),
-              if (_isLoading) CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              if (_isLoading) const CircularProgressIndicator(),
             ],
+          ),
           ),
         ),
       ),

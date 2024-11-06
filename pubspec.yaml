@@ -34,6 +34,8 @@ dependencies:
   shared_preferences: ^2.0.14  # Use the latest version available
   intl: ^0.18.0
   dio: ^4.0.0
+  flutter_dotenv: ^5.0.2
+
 
 
 

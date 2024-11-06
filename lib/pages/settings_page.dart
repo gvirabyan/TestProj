@@ -37,7 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final url = Uri.parse('http://192.168.27.48:7000/logout');
+    final url = Uri.parse('http://192.168.27.48:8000/logout');
 
     try {
       final response = await http.post(
@@ -68,13 +68,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> getUserInfo() async {
+
     String? token = await _getToken();
     if (token == null || token.isEmpty) {
       print('No token provided for fetching user info');
       return;
     }
 
-    final url = Uri.parse('http://192.168.27.48:7000/api/general/user_info');
+    final url = Uri.parse('http://192.168.27.48:8000/api/general/user_info');
 
     try {
       final response = await http.get(
@@ -84,7 +85,6 @@ class _SettingsPageState extends State<SettingsPage> {
           "Authorization": "Bearer $token",
         },
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 

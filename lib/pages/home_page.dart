@@ -16,6 +16,10 @@ class _HomePageState extends State<HomePage> {
   bool _isLoading = false;
   String _orderDetails = '';
   String _amount = '';
+  String _income_type = 'CASHLESS';
+  String _income_source = 'FROM_INDIVIDUAL';
+
+
 
   final List<Widget> _pages = [
     PageContent(title: 'Welcome to the Home Page!'),
@@ -24,8 +28,9 @@ class _HomePageState extends State<HomePage> {
   ];
   String _token = "";
 
+
   Future<void> _getToken() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     String? storageToken = prefs.getString('token');
     _token = storageToken!;
     _isInProgress();
@@ -36,6 +41,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _getToken();
     _loadOrderDetails();
+
   }
 
   void _onItemTapped(int index) async {
@@ -52,19 +58,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadOrderDetails() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
+    setState(() async {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
       _orderDetails = prefs.getString('order') ?? '';
     });
   }
 
   Future<void> _isInProgress() async {
-    if (_token == null) {
+    if (_token == '') {
       print('Token is null. Cannot add order.');
       return;
     }
 
-    final url = Uri.parse('http://192.168.27.48:7000/api/driver/active_order');
+    final url = Uri.parse('http://192.168.27.48:8000/api/driver/active_order');
 
     setState(() {
       _isLoading = true;
@@ -100,12 +106,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _addNewOrder() async {
-    if (_token == null) {
+    if (_token == '') {
       print('Token is null. Cannot add order.');
       return;
     }
 
-    final url = Uri.parse('http://192.168.27.48:7000/api/driver/order');
+    final url = Uri.parse('http://192.168.27.48:8000/api/driver/order');
 
     setState(() {
       _isLoading = true;
@@ -137,13 +143,13 @@ class _HomePageState extends State<HomePage> {
   Future<void> _completeOrder() async {
     print('Order completed with amount: $_amount');
 
-    if (_token == null) {
+    if (_token == '') {
       print('Token is null. Cannot add order.');
       return;
     }
 
     final url =
-        Uri.parse('http://192.168.27.48:7000/api/driver/order_complete');
+        Uri.parse('http://192.168.27.48:8000/api/driver/order_complete');
 
     setState(() {
       _isLoading = true;
@@ -162,7 +168,7 @@ class _HomePageState extends State<HomePage> {
           "Accept": "application/json",
           "Authorization": "Bearer $_token",
         },
-        body: (requestBody), // Convert to JSON string
+        body: (requestBody),
       );
       print(response.statusCode);
       print(response.body);
@@ -190,13 +196,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _cancelOrder() async {
     print('Order cancelled');
-    if (_token == null) {
+    if (_token == '') {
       print('Token is null. Cannot add order.');
       return;
     }
 
     final url = Uri.parse(
-        'http://192.168.27.48:7000/api/driver/order_cancel?_method=PUT');
+        'http://192.168.27.48:8000/api/driver/order_cancel?_method=PUT');
 
     setState(() {
       _isLoading = true;
@@ -237,7 +243,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.yellow, Colors.orange],
             begin: Alignment.topLeft,
@@ -249,7 +255,7 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: Center(
                 child: _isLoading
-                    ? CircularProgressIndicator()
+                    ? const CircularProgressIndicator()
                     : _selectedIndex == 0
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -277,6 +283,7 @@ class _HomePageState extends State<HomePage> {
                                             });
                                           },
                                         ),
+
                                         SizedBox(height: 20),
                                         Row(
                                           mainAxisAlignment:
