@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../history_item.dart';
+import 'model/history_item.dart';
 
 class HistoryPage extends StatefulWidget {
   @override

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:DriveTax/model/user_info_model.dart';
 import 'login_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,13 +14,8 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String phoneNumber = '';
-  String companyName = '';
-  String name = '';
-  String username = '';
-  String driverLicenseNumber = '';
-  String registrationDate = '';
-  String car = '';
+  List<UserInfoModel> _userInfoModel = [];
+  bool _isLoading = true; // To show loading indicator while fetching data
 
   @override
   void initState() {
@@ -36,12 +33,12 @@ class _SettingsPageState extends State<SettingsPage> {
       print('No token provided for logout');
       return;
     }
-
-    final url = Uri.parse('http://192.168.27.48:8000/logout');
+    final String logoutApi =
+        dotenv.env['LOGOUT_URL'] ?? 'https://default-login-url.com';
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse(logoutApi),
         headers: {
           "Accept": "application/json",
           "Authorization": "Bearer $token",
@@ -68,18 +65,18 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> getUserInfo() async {
-
     String? token = await _getToken();
     if (token == null || token.isEmpty) {
       print('No token provided for fetching user info');
       return;
     }
 
-    final url = Uri.parse('http://192.168.27.48:8000/api/general/user_info');
+    final String userInfo = dotenv.env['GET_USER_INFO'] ?? 'https://default-login-url.com';
+
 
     try {
       final response = await http.get(
-        url,
+        Uri.parse(userInfo),
         headers: {
           "Accept": "application/json",
           "Authorization": "Bearer $token",
@@ -89,15 +86,18 @@ class _SettingsPageState extends State<SettingsPage> {
         final data = jsonDecode(response.body);
 
         setState(() {
-          name = data['data']['name'] ?? 'Unknown';
-          username = data['data']['username'] ?? 'Unknown';
-          driverLicenseNumber =
-              data['data']['driver_license_number'] ?? 'Unknown';
-          phoneNumber = data['data']['phone_number'] ?? 'Unknown';
-          registrationDate = data['data']['registered_at'] ?? 'Unknown';
-          car = data['data']['car']['model'] ?? 'Unknown';
-          companyName = data['data']['company_name'] ?? 'Unknown';
-          phoneNumber = data['data']['phone_number'] ?? 'Unknown';
+          _userInfoModel = [
+            UserInfoModel(
+              name: data['data']['name'],
+              username: data['data']['username'],
+              phoneNumber: data['data']['phone_number'],
+              companyName: data['data']['company_name'],
+              car: data['data']['car']['model'],
+              registrationDate: data['data']['registered_at'],
+              driverLicenseNumber: data['data']['driver_license_number'],
+            )
+          ];
+          _isLoading = false; // Set loading to false after data is fetched
         });
       } else {
         print('Failed to fetch user info: ${response.body}');
@@ -147,18 +147,30 @@ class _SettingsPageState extends State<SettingsPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            buildUserInfo('Phone Number:', phoneNumber),
-            buildUserInfo('Company Name', companyName),
-            buildUserInfo(' Name', name),
-            buildUserInfo('Username', username),
-            buildUserInfo('Driver license number ', driverLicenseNumber),
-            buildUserInfo('Registration Date', registrationDate),
-            buildUserInfo('Car', car),
+            // Show loading indicator while data is being fetched
+            if (_isLoading)
+              const CircularProgressIndicator()
+            else if (_userInfoModel.isNotEmpty)
+              Column(
+                children: [
+                  buildUserInfo('Phone Number:', _userInfoModel[0].phoneNumber),
+                  buildUserInfo('Company Name', _userInfoModel[0].companyName),
+                  buildUserInfo(' Name', _userInfoModel[0].name),
+                  buildUserInfo('Username', _userInfoModel[0].username),
+                  buildUserInfo('Driver license number ',
+                      _userInfoModel[0].driverLicenseNumber),
+                  buildUserInfo(
+                      'Registration Date', _userInfoModel[0].registrationDate),
+                  buildUserInfo('Car', _userInfoModel[0].car),
+                ],
+              )
+            else
+              const Text('No user info available'),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: () async {
-                String? token = await _getToken(); // Await the token
-                await logOut(token); // Pass the token
+                String? token = await _getToken();
+                await logOut(token);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

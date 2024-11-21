@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
@@ -35,17 +36,16 @@ class _LoginPageState extends State<LoginPage> {
 
     if (_formKey.currentState?.validate() ?? false) {
 
-      print('Login successful');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login successful')));
     } else {
       print('Login failed');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login failed')));
     }
 
     if(email=='' || password == ''){
       return;
     }
-    final url = Uri.parse('http://192.168.27.48:8000/login');
+    final String loginUrl = dotenv.env['LOGIN_URL'] ?? 'https://default-login-url.com';
+
 
     final Map<String, dynamic> requestBody = {
       'email': email,
@@ -59,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse(loginUrl),
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json"
@@ -72,12 +72,13 @@ class _LoginPageState extends State<LoginPage> {
       var decodeJson = jsonDecode(response.body);
 
       if (decodeJson.containsKey('access_token')) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login successful')));
+
         String accessToken = decodeJson['access_token'];
         await _saveToken(accessToken);
-        print(accessToken + "-------LOGIN----------");
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => const HomePage()),
         );
       } else {
         print('Login failed with status code: ${response.statusCode}');

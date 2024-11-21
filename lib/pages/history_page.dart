@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../history_item.dart';
+import '../model/history_item.dart';
 
 class HistoryPage extends StatefulWidget {
+
   @override
   _HistoryPageState createState() => _HistoryPageState();
 }
 
 class _HistoryPageState extends State<HistoryPage> {
+
   String _token = "";
   int _lastPage = 1;
   int _page = 1;
@@ -23,6 +26,10 @@ class _HistoryPageState extends State<HistoryPage> {
     _getAllOrders();
   }
 
+  Uri getAllOrdersUrl() {
+    String baseUrl = dotenv.env['GET_ALL_ORDERS_URL'] ?? 'http://default-url.com/api/driver/order';
+    return Uri.parse(baseUrl + _lastPage.toString());
+  }
   Future<void> _getToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? storageToken = prefs.getString('token');
@@ -36,11 +43,9 @@ class _HistoryPageState extends State<HistoryPage> {
       return;
     }
 
-    final url = Uri.parse('http://192.168.27.48:8000/api/driver/order?page=$_page');
-
     try {
       final response = await http.get(
-        url,
+        getAllOrdersUrl(),
         headers: {
           "Accept": "application/json",
           "Authorization": "Bearer $_token",
@@ -89,10 +94,13 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
 
       body: Container(
-        decoration: BoxDecoration(
+        height: size.height,
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.yellow, Colors.orange],
             begin: Alignment.topLeft,

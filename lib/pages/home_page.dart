@@ -1,33 +1,44 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:DriveTax/pages/settings_page.dart';
+import 'package:DriveTax/timer_service.dart';
 import 'package:flutter/material.dart';
-import 'package:untitled3/pages/settings_page.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'history_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  Timer? _timer; // Variable to hold the periodic timer for UI updates
   int _selectedIndex = 0;
   bool _isLoading = false;
-  String _orderDetails = '';
+  bool _current_order = false;
   String _amount = '';
   String _income_type = 'CASHLESS';
   String _income_source = 'FROM_INDIVIDUAL';
+  final List<String> _income_type_options = ['CASHLESS', '2'];
+  final List<String> __income_source_options = [
+    'FROM_INDIVIDUAL',
+    'FROM_LEGAL_ENTITY'
+  ];
 
-
+  String timer = "00:00:00";
+  TimerService _timerManager = TimerService();
 
   final List<Widget> _pages = [
-    PageContent(title: 'Welcome to the Home Page!'),
+    const PageContent(title: ''),
     HistoryPage(),
-    SettingsPage(),
+    const SettingsPage(),
   ];
   String _token = "";
-
 
   Future<void> _getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -40,8 +51,15 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _getToken();
+    _timerManager.initializeOrderTime();
     _loadOrderDetails();
+    _startTimer();
+  }
 
+  void _startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {}); // Trigger UI rebuild every second
+    });
   }
 
   void _onItemTapped(int index) async {
@@ -60,7 +78,9 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadOrderDetails() async {
     setState(() async {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      _orderDetails = prefs.getString('order') ?? '';
+      if (prefs.getString('order') != null) {
+        _current_order = true;
+      }
     });
   }
 
@@ -69,8 +89,8 @@ class _HomePageState extends State<HomePage> {
       print('Token is null. Cannot add order.');
       return;
     }
-
-    final url = Uri.parse('http://192.168.27.48:8000/api/driver/active_order');
+    String url =
+        dotenv.env['ACTIVE_ORDER_URL'] ?? 'https://default-login-url.com';
 
     setState(() {
       _isLoading = true;
@@ -78,7 +98,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final response = await http.get(
-        url,
+        Uri.parse(url),
         headers: {
           "Accept": "application/json",
           "Authorization": "Bearer $_token",
@@ -87,7 +107,7 @@ class _HomePageState extends State<HomePage> {
 
       print(response.statusCode);
       if (response.statusCode == 200) {
-        _orderDetails = "16:30";
+        _current_order = true;
       } else {
         print('Current order not exists: ${response.body}');
       }
@@ -110,8 +130,8 @@ class _HomePageState extends State<HomePage> {
       print('Token is null. Cannot add order.');
       return;
     }
-
-    final url = Uri.parse('http://192.168.27.48:8000/api/driver/order');
+    String newOrderUrl =
+        dotenv.env['NEW_ORDER_URL'] ?? 'https://default-login-url.com';
 
     setState(() {
       _isLoading = true;
@@ -119,7 +139,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse(newOrderUrl),
         headers: {
           "Accept": "application/json",
           "Authorization": "Bearer $_token",
@@ -127,7 +147,9 @@ class _HomePageState extends State<HomePage> {
       );
       print(response.statusCode);
       if (response.statusCode == 201) {
-        _orderDetails = "15:30";
+        await _timerManager.saveOrderStartTime();
+        setState(() {});
+        _current_order = true;
       } else {
         print('Order creation failed: ${response.body}');
       }
@@ -141,43 +163,63 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _completeOrder() async {
-    print('Order completed with amount: $_amount');
-
     if (_token == '') {
-      print('Token is null. Cannot add order.');
+      print('Token is null. Cannot complete order.');
       return;
     }
 
-    final url =
-        Uri.parse('http://192.168.27.48:8000/api/driver/order_complete');
+    final String completeOrderUrl =
+        dotenv.env['COMPLETE_ORDER_URL'] ?? 'https://default-login-url.com';
 
     setState(() {
       _isLoading = true;
     });
-    final Map<String, dynamic> requestBody = {
-      'income_type': 'CASHLESS',
+
+    Map<String, dynamic> requestBody = {
+      'income_type': _income_type,
       'service_amount': _amount,
-      'income_source': 'FROM_INDIVIDUAL',
-      'service_quantity': '1'
+      'income_source': _income_source,
+      'service_quantity': '1', // Change 1 to string
     };
+    if (_income_source == 'FROM_LEGAL_ENTITY') {
+      requestBody = {
+        'income_type': _income_type,
+        'service_amount': _amount,
+        'income_source': _income_source,
+        'service_quantity': '1', // Change 1 to string
+        'partner_id': '1', // Change 1 to string if id should be a string
+      };
+    }
+
+    print('after if');
+    print(requestBody);
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse(completeOrderUrl),
         headers: {
           "Accept": "application/json",
           "Authorization": "Bearer $_token",
         },
-        body: (requestBody),
+        body: json.encode(requestBody),
       );
+
+      // print("income_type: $_income_type, income_source: $_income_source");
+      //print("service_quantity: ${requestBody['service_quantity']} (type: ${requestBody['service_quantity'].runtimeType})");
+
+      print('in try');
       print(response.statusCode);
-      print(response.body);
-      print(_token);
+
+      print(requestBody);
       if (response.statusCode == 201) {
-        _orderDetails = "15:30";
-        print(response.body);
+        //  _orderDetails = "15:30";
+        setState(() {
+          _current_order = false;
+          _amount = '';
+        });
+        print(response.body + "res body");
       } else {
-        print('Complete faild: ${response.body}');
+        print('Complete failed: ${response.body}');
       }
     } catch (error) {
       print('Error occurred: $error');
@@ -187,56 +229,13 @@ class _HomePageState extends State<HomePage> {
       });
     }
 
-    setState(() {
-      _orderDetails = '';
-      _amount = '';
-    });
     _saveOrderDetails('');
   }
 
-  Future<void> _cancelOrder() async {
-    print('Order cancelled');
-    if (_token == '') {
-      print('Token is null. Cannot add order.');
-      return;
-    }
-
-    final url = Uri.parse(
-        'http://192.168.27.48:8000/api/driver/order_cancel?_method=PUT');
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Accept": "application/json",
-          "Authorization": "Bearer $_token",
-        },
-      );
-      print(response.statusCode);
-      print(_token);
-      if (response.statusCode == 201) {
-        _orderDetails = "15:30";
-        print(response.body);
-      } else {
-        print('Order creation failed: ${response.body}');
-      }
-    } catch (error) {
-      print('Error occurred: $error');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-
-    setState(() {
-      _orderDetails = '';
-      _amount = '';
-    });
-    _saveOrderDetails('');
+  @override
+  void dispose() {
+    _timer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
   }
 
   @override
@@ -262,28 +261,58 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               _pages[_selectedIndex],
                               SizedBox(height: 20),
-                              _orderDetails.isNotEmpty
+                              _current_order
                                   ? Column(
                                       children: [
                                         Text(
-                                          _orderDetails,
+                                          timer,
                                           textAlign: TextAlign.center,
                                           style: TextStyle(fontSize: 18),
                                         ),
                                         SizedBox(height: 20),
-                                        TextField(
+                                        TextFormField(
+                                          onChanged: (value) {
+                                            _amount = value;
+                                          },
                                           keyboardType: TextInputType.number,
-                                          decoration: InputDecoration(
-                                            hintText: 'Amount',
+                                          decoration: const InputDecoration(
+                                            labelText: 'Amount',
+                                            hintText: 'Enter  amount',
                                             border: OutlineInputBorder(),
                                           ),
-                                          onChanged: (value) {
+                                        ),
+                                        DropdownButton<String>(
+                                          value: _income_type,
+                                          hint: Text('CASHLESS'),
+                                          items: _income_type_options
+                                              .map((String value) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Text(value),
+                                            );
+                                          }).toList(),
+                                          onChanged: (newValue) {
                                             setState(() {
-                                              _amount = value;
+                                              _income_type = newValue!;
                                             });
                                           },
                                         ),
-
+                                        DropdownButton<String>(
+                                          value: _income_source,
+                                          hint: Text('FROM_INDIVIDUAL'),
+                                          items: __income_source_options
+                                              .map((String value) {
+                                            return DropdownMenuItem<String>(
+                                              value: value,
+                                              child: Text(value),
+                                            );
+                                          }).toList(),
+                                          onChanged: (newValue) {
+                                            setState(() {
+                                              _income_source = newValue!;
+                                            });
+                                          },
+                                        ),
                                         SizedBox(height: 20),
                                         Row(
                                           mainAxisAlignment:
@@ -331,6 +360,50 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  Future<void> _cancelOrder() async {
+    print('Order cancelled');
+    if (_token == '') {
+      print('Token is null. Cannot add order.');
+      return;
+    }
+    final String cancleOrderUrl =
+        dotenv.env['CANCLE_ORDER_URL'] ?? 'https://default-login-url.com';
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse(cancleOrderUrl),
+        headers: {
+          "Accept": "application/json",
+          "Authorization": "Bearer $_token",
+        },
+      );
+      print(response.statusCode);
+      print(_token);
+      if (response.statusCode == 201) {
+        // _orderDetails = "15:30";
+        print(response.body);
+      } else {
+        print('Order creation failed: ${response.body}');
+      }
+    } catch (error) {
+      print('Error occurred: $error');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    setState(() {
+      _current_order = false;
+      _amount = '';
+    });
+    _saveOrderDetails('');
   }
 
   Widget _buildButton(String label, int index) {
