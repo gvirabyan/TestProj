@@ -29,7 +29,7 @@ class TimerService {
   }
 
   // Calculate elapsed time as string (hh:mm:ss)
-  String getElapsedTime() {
+     String getElapsedTime() {
     if (_orderStartTime == null) return "00:00:00";
 
     // Calculate elapsed time in seconds
@@ -40,7 +40,6 @@ class TimerService {
     int minutes = (_elapsedTimeInSeconds % 3600) ~/ 60;
     int seconds = _elapsedTimeInSeconds % 60;
 
-    // Return formatted time string
     return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 

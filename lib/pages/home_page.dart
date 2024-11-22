@@ -5,6 +5,7 @@ import 'package:DriveTax/pages/settings_page.dart';
 import 'package:DriveTax/timer_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../shared_prefs.dart';
 import 'history_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -17,7 +18,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  Timer? _timer; // Variable to hold the periodic timer for UI updates
+  Timer? _timer;
   int _selectedIndex = 0;
   bool _isLoading = false;
   bool _current_order = false;
@@ -38,28 +39,29 @@ class _HomePageState extends State<HomePage> {
     HistoryPage(),
     const SettingsPage(),
   ];
-  String _token = "";
+  String _token = '';
+
+  @override
+  void initState() {
+    super.initState();
+
+    _getToken();
+    _loadOrderDetails();
+    _timerManager.initializeOrderTime();
+    _startTimer();
+  }
 
   Future<void> _getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? storageToken = prefs.getString('token');
     _token = storageToken!;
-    _isInProgress();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _getToken();
-    _timerManager.initializeOrderTime();
-    _loadOrderDetails();
-    _startTimer();
+    if (_token != '') {
+      _isInProgress();
+    }
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {}); // Trigger UI rebuild every second
-    });
+    // timer = _timer.
   }
 
   void _onItemTapped(int index) async {
@@ -76,12 +78,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadOrderDetails() async {
-    setState(() async {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      if (prefs.getString('order') != null) {
-        _current_order = true;
-      }
-    });
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (prefs.getString('order') != "" || prefs.getString('order') != null) {
+      _current_order = true;
+    }
   }
 
   Future<void> _isInProgress() async {
@@ -106,9 +106,11 @@ class _HomePageState extends State<HomePage> {
       );
 
       print(response.statusCode);
+      print(response.body);
       if (response.statusCode == 200) {
         _current_order = true;
       } else {
+        _current_order = false;
         print('Current order not exists: ${response.body}');
       }
     } catch (error) {
@@ -160,6 +162,7 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     }
+    _saveOrderDetails(DateTime.now().toUtc().toString().substring(11, 19));
   }
 
   Future<void> _completeOrder() async {
@@ -175,25 +178,29 @@ class _HomePageState extends State<HomePage> {
       _isLoading = true;
     });
 
-    Map<String, dynamic> requestBody = {
-      'income_type': _income_type,
-      'service_amount': _amount,
-      'income_source': _income_source,
-      'service_quantity': '1', // Change 1 to string
-    };
-    if (_income_source == 'FROM_LEGAL_ENTITY') {
-      requestBody = {
-        'income_type': _income_type,
-        'service_amount': _amount,
-        'income_source': _income_source,
-        'service_quantity': '1', // Change 1 to string
-        'partner_id': '1', // Change 1 to string if id should be a string
-      };
+    // Validate fields before making the request
+    if (_income_type.isEmpty || _amount.isEmpty || _income_source.isEmpty) {
+      print('Please fill in all required fields.');
+      setState(() {
+        _isLoading = false;
+      });
+      return;
     }
 
-    print('after if');
-    print(requestBody);
+    final double amount = double.tryParse(_amount) ?? 0.0;
 
+    Map<String, dynamic> requestBody = {
+      'income_type': _income_type,
+      'service_amount': amount.toString(),
+      'income_source': _income_source,
+      'service_quantity': '1',
+    };
+
+    if (_income_source == 'FROM_LEGAL_ENTITY') {
+      requestBody['partner_id'] = '1';
+    }
+
+    print('Request Body: $requestBody');
     try {
       final response = await http.post(
         Uri.parse(completeOrderUrl),
@@ -204,22 +211,17 @@ class _HomePageState extends State<HomePage> {
         body: json.encode(requestBody),
       );
 
-      // print("income_type: $_income_type, income_source: $_income_source");
-      //print("service_quantity: ${requestBody['service_quantity']} (type: ${requestBody['service_quantity'].runtimeType})");
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
-      print('in try');
-      print(response.statusCode);
-
-      print(requestBody);
-      if (response.statusCode == 201) {
-        //  _orderDetails = "15:30";
+      if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() {
           _current_order = false;
           _amount = '';
         });
-        print(response.body + "res body");
+        print('Order completed successfully.');
       } else {
-        print('Complete failed: ${response.body}');
+        print('Order failed: ${response.body}');
       }
     } catch (error) {
       print('Error occurred: $error');
@@ -231,6 +233,8 @@ class _HomePageState extends State<HomePage> {
 
     _saveOrderDetails('');
   }
+
+
 
   @override
   void dispose() {
@@ -363,7 +367,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _cancelOrder() async {
-    print('Order cancelled');
     if (_token == '') {
       print('Token is null. Cannot add order.');
       return;
@@ -387,9 +390,10 @@ class _HomePageState extends State<HomePage> {
       print(_token);
       if (response.statusCode == 201) {
         // _orderDetails = "15:30";
+        SharedPrefs.deleteCurrentOrder();
         print(response.body);
       } else {
-        print('Order creation failed: ${response.body}');
+        print('Order cancel failed: ${response.body}');
       }
     } catch (error) {
       print('Error occurred: $error');
